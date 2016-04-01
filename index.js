@@ -1,51 +1,74 @@
+'use strict';
+
 var fs = require('fs');
 var wav = require('wav');
-
 var Speaker = require('speaker');
 
-
-var AudioBuffer = require("audio-buffer");
-
-
-var streamToBuffer = require('stream-to-buffer')
-var file = fs.createReadStream('track04.wav');
-var reader = new wav.Reader();
-
-var buffer;
+var streamToBuffer = require('stream-to-buffer');
 var streamBuffers = require('stream-buffers');
-streamToBuffer(file.pipe(reader), function (err, buf) {
-  buffer = buf
-});
+// var reader = ;
+
+let sample = buffer => {
+  return _ => {
+    let b = new streamBuffers.ReadableStreamBuffer();
+    b.put(buffer);
+
+    return b;
+  }
+};
+let sampleLoader = (files) => {
+  return files.reduce((samples, file, i) => {
+    let reader = new wav.Reader();
+    reader.on('format', function (format) {
+      samples[i] = {format: format};
+      streamToBuffer(reader, (e, buf) => {
+        samples[i].sample = sample(buf);
+      });
+    });
+    fs.createReadStream(file).pipe(reader);
 
 
-// var utils = require('audio-buffer-utils');
-// var AudioBufferStream = require('audio-buffer-stream')
+    return samples;
+  }, [])
+};
+
+let samples = sampleLoader(['track11.wav', 'track12.wav', 'track13.wav']);
+
+// var buffer;
+
+// streamToBuffer(file.pipe(reader), function (err, buf) {
+//   buffer = buf
+// });
 
 var launchpadder = require("launchpadder").Launchpad;
 var launchpadColor = require("launchpadder").Color;
 var pad = new launchpadder();
 
-pad.on("press", function(button) {
-  // var file = fs.createReadStream('track01.wav');
+
+
+pad.on("press", function (button) {
+  // console.log(samples[0]());
+  // var b = new streamBuffers.ReadableStreamBuffer();
+  // b.put(buffer);
+  // b.pipe(new Speaker());
+  // console.log(`track0${button.getX()+1}.wav`);
   // var reader = new wav.Reader();
   // reader.on('format', function (format) {
-    // the WAVE header is stripped from the output of the reader
-    // reader.pipe(new Speaker(format));
+  //   reader.pipe(new Speaker(format));
   // });
-  // var s = AudioBufferStream();
-  // s.write(utils.clone(buffer));
+  //
+  // fs.createReadStream(`track${button.getX() + 11}.wav`).pipe(reader).pipe(new Speaker());
 
-  var b = new streamBuffers.ReadableStreamBuffer();
-  b.put(buffer);
-  b.pipe(new Speaker());
-  // pipe the WAVE file to the Reader instance
-  // file.pipe(reader);
+  if (samples[button.getX()]) {
+    console.log(samples[button.getX()]);
+    samples[button.getX()].sample().pipe(new Speaker(samples[button.getX()].format));
+  }
 
-    button.light(launchpadColor.RED);
-    // console.log(button + " was pressed");
+  button.light(launchpadColor.RED);
+  // console.log(button.getX() + " was pressed");
 });
 
-pad.on("release", function(button) {
-    button.dark();
-    // console.log(button + " was released");
+pad.on("release", function (button) {
+  button.dark();
+  // console.log(button + " was released");
 });
